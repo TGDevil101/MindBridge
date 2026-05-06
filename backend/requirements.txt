@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+groq
+sqlalchemy
+aiofiles
+python-dotenv
+pytest
