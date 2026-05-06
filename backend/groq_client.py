@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from groq import AsyncGroq
 
 from crisis import CRISIS_RESPONSE
 
-load_dotenv()
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 SYSTEM_PROMPT = """You are MindBridge, a mental health awareness chatbot for students and parents in India.
 
@@ -20,7 +22,8 @@ Rules you must never break:
 6. You cover 5 conditions: anxiety, depression, stress, ADHD, and loneliness.
 7. Always end referral conversations by mentioning iCall (9152987821)."""
 
-_groq_api_key = os.getenv("GROQ_API_KEY", "")
+_groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
+print(f"DEBUG: GROQ_API_KEY loaded = {bool(_groq_api_key)}, length = {len(_groq_api_key)}")
 _client = AsyncGroq(api_key=_groq_api_key) if _groq_api_key else None
 
 
