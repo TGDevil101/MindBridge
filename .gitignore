@@ -1,0 +1,21 @@
+# Backend
+backend/.env
+backend/mindbridge.db
+backend/*.db
+backend/__pycache__/
+backend/.pytest_cache/
+backend/venv/
+backend/.venv/
+
+# Frontend
+frontend/.dart_tool/
+frontend/build/
+frontend/web/
+frontend/.packages
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
