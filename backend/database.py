@@ -57,6 +57,23 @@ def append_chat_message(session_id: str, user_type: str, user_message: str, bot_
         db.close()
 
 
+def get_session_history(session_id: str) -> List[Dict[str, Any]]:
+    """Return the message list for a specific session, for passing to the LLM as context."""
+    db = SessionLocal()
+    try:
+        record = (
+            db.query(ChatSession)
+            .filter(ChatSession.session_id == session_id)
+            .order_by(ChatSession.id.desc())
+            .first()
+        )
+        if record is None:
+            return []
+        return list(record.messages or [])
+    finally:
+        db.close()
+
+
 def get_chat_history() -> List[Dict[str, Any]]:
     db = SessionLocal()
     try:

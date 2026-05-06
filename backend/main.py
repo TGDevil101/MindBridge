@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from crisis import CRISIS_RESPONSE, detect_explicit_crisis, detect_implicit_distress
-from database import append_chat_message, get_chat_history, init_db
+from database import append_chat_message, get_chat_history, get_session_history, init_db
 from groq_client import get_chat_response
 from scoring import score_assessment
 
@@ -57,7 +57,8 @@ async def chat(payload: ChatRequest) -> dict:
         }
 
     implicit_distress = detect_implicit_distress(text)
-    response = await get_chat_response(payload.user_type, text, implicit_distress=implicit_distress)
+    history = get_session_history(session_id)
+    response = await get_chat_response(payload.user_type, text, implicit_distress=implicit_distress, history=history)
     append_chat_message(session_id, payload.user_type, text, response)
 
     return {

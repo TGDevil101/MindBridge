@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  ApiService({this.baseUrl = 'http://127.0.0.1:8000'});
+  ApiService({this.baseUrl = 'https://mindbridge-cxqv.onrender.com'});
 
   final String baseUrl;
 
