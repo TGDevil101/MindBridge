@@ -92,6 +92,9 @@ async def register(payload: RegisterRequest) -> dict:
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     
+    if len(password) > 72:
+        raise HTTPException(status_code=400, detail="Password must be 72 characters or less")
+    
     try:
         password_hash = hash_password(password)
         await create_user(username, password_hash)
