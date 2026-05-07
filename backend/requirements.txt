@@ -1,7 +1,9 @@
 fastapi
 uvicorn
 groq
-sqlalchemy
-aiofiles
 python-dotenv
 pytest
+motor
+pymongo
+passlib[bcrypt]
+python-jose[cryptography]

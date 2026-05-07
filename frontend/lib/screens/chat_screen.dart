@@ -1,3 +1,5 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
@@ -10,11 +12,13 @@ class ChatScreen extends StatefulWidget {
     super.key,
     required this.userType,
     required this.ageRange,
+    this.sessionId,
   });
 
   static const routeName = '/chat';
   final String userType;
   final String ageRange;
+  final String? sessionId;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -24,14 +28,59 @@ class _ChatScreenState extends State<ChatScreen> {
   final _api = ApiService();
   final _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  late String _sessionId;
   bool _isLoading = false;
   bool _showCrisisCard = false;
+  bool _isLoadingHistory = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionId = widget.sessionId ?? DateTime.now().millisecondsSinceEpoch.toString();
+    _loadPastMessages();
+  }
+
+  Future<void> _loadPastMessages() async {
+    try {
+      final history = await _api.getHistory();
+      
+      // Find the session matching our sessionId
+      final session = history.firstWhere(
+        (s) => (s as Map<String, dynamic>)['session_id'] == _sessionId,
+        orElse: () => null,
+      );
+      
+      if (session != null && mounted) {
+        final messages = (session as Map<String, dynamic>)['messages'] as List<dynamic>? ?? [];
+        setState(() {
+          _messages.clear();
+          for (final msg in messages) {
+            final m = msg as Map<String, dynamic>;
+            _messages.add({
+              'role': m['role'] as String? ?? 'user',
+              'content': m['content'] as String? ?? '',
+            });
+          }
+        });
+      }
+    } catch (e) {
+      // No past messages, start fresh
+    } finally {
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogout() async {
+    await _api.logout();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   Future<void> _send() async {
@@ -79,52 +128,58 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () => Navigator.pushNamed(context, ChatHistoryScreen.routeName),
             icon: const Icon(Icons.history),
           ),
+          IconButton(
+            onPressed: _handleLogout,
+            icon: const Icon(Icons.logout),
+          ),
         ],
       ),
-      body: Column(
-        children: [
-          if (_showCrisisCard)
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFB71C1C),
-              padding: const EdgeInsets.all(12),
-              child: const Text(
-                'Immediate Support: iCall 9152987821 | Emergency 112',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          if (isStudent)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(context, AssessmentScreen.routeName),
-                  child: const Text('Take Assessment'),
-                ),
-              ),
-            ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final item = _messages[index];
-                final isUser = item['role'] == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isUser ? const Color(0xFFD6EEFF) : Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+      body: _isLoadingHistory
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (_showCrisisCard)
+                  Container(
+                    width: double.infinity,
+                    color: const Color(0xFFB71C1C),
+                    padding: const EdgeInsets.all(12),
+                    child: const Text(
+                      'Immediate Support: iCall 9152987821 | Emergency 112',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
-                    child: Text(item['content'] ?? ''),
                   ),
-                );
-              },
-            ),
+                if (isStudent)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pushNamed(context, AssessmentScreen.routeName),
+                        child: const Text('Take Assessment'),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final item = _messages[index];
+                      final isUser = item['role'] == 'user';
+                      return Align(
+                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isUser ? const Color(0xFFD6EEFF) : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(item['content'] ?? ''),
+                        ),
+                      );
+                    },
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),

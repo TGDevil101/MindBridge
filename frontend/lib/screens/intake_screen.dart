@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 import 'chat_screen.dart';
 
 class IntakeScreen extends StatefulWidget {
-  const IntakeScreen({super.key});
+  final String? username;
+  final String? token;
+
+  const IntakeScreen({
+    super.key,
+    this.username,
+    this.token,
+  });
+
+  static const routeName = '/intake';
 
   @override
   State<IntakeScreen> createState() => _IntakeScreenState();
@@ -17,7 +26,22 @@ class _IntakeScreenState extends State<IntakeScreen> {
   Widget build(BuildContext context) {
     final canContinue = _userType != null && _ageRange != null;
     return Scaffold(
-      appBar: AppBar(title: const Text('MindBridge Intake')),
+      appBar: AppBar(
+        title: const Text('MindBridge Intake'),
+        actions: widget.username != null
+            ? [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Center(
+                    child: Text(
+                      widget.username!,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+              ]
+            : null,
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
