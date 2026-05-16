@@ -5,3 +5,4 @@ sqlalchemy
 aiofiles
 python-dotenv
 pytest
+httpx

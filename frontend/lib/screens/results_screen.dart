@@ -41,9 +41,9 @@ class ResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             if (showIcall)
-              Card(
-                color: const Color(0xFFE8F5E9),
-                child: const Padding(
+              const Card(
+                color: Color(0xFFE8F5E9),
+                child: Padding(
                   padding: EdgeInsets.all(12),
                   child: Text(
                     'Support: iCall 9152987821',

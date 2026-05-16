@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
@@ -8,8 +9,17 @@ from pydantic import BaseModel, Field
 
 from crisis import CRISIS_RESPONSE, detect_explicit_crisis, detect_implicit_distress
 from database import append_chat_message, get_chat_history, get_session_history, init_db
-from groq_client import get_chat_response
 from scoring import score_assessment
+
+# Model provider — defaults to local fine-tuned Ollama model.
+# Set MODEL_PROVIDER=groq to fall back to Groq API (e.g. for comparison tests).
+_PROVIDER = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
+if _PROVIDER == "groq":
+    from groq_client import get_chat_response
+    _OllamaUnavailable = ()  # type: ignore
+else:
+    from ollama_client import OllamaUnavailable as _OllamaUnavailable
+    from ollama_client import get_chat_response
 
 app = FastAPI(title="MindBridge Backend")
 
@@ -39,7 +49,7 @@ def startup_event() -> None:
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": "mindbridge-backend"}
+    return {"status": "ok", "service": "mindbridge-backend", "provider": _PROVIDER}
 
 
 @app.post("/chat")
@@ -58,7 +68,12 @@ async def chat(payload: ChatRequest) -> dict:
 
     implicit_distress = detect_implicit_distress(text)
     history = get_session_history(session_id)
-    response = await get_chat_response(payload.user_type, text, implicit_distress=implicit_distress, history=history)
+    try:
+        response = await get_chat_response(
+            payload.user_type, text, implicit_distress=implicit_distress, history=history
+        )
+    except _OllamaUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     append_chat_message(session_id, payload.user_type, text, response)
 
     return {
