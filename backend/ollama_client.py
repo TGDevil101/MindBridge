@@ -16,6 +16,20 @@ load_dotenv(dotenv_path=env_path)
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mindbridge")
 
+# RAG is optional: set RAG_ENABLED=false to skip retrieval entirely.
+RAG_ENABLED = os.getenv("RAG_ENABLED", "true").strip().lower() not in ("false", "0", "no")
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
+
+# Import RAG lazily — if chromadb fails to load, fall back gracefully
+try:
+    if RAG_ENABLED:
+        import rag as _rag
+    else:
+        _rag = None  # type: ignore
+except Exception as _e:
+    print(f"[ollama_client] RAG disabled (import failed): {_e}")
+    _rag = None  # type: ignore
+
 # Short system prompt matching the one used during QLoRA fine-tuning.
 # The Modelfile also defines a default SYSTEM directive, but we pass it
 # explicitly here so behaviour is deterministic regardless of model defaults.
@@ -35,13 +49,32 @@ class OllamaUnavailable(RuntimeError):
     """Raised when the Ollama backend is unreachable or returns an empty result."""
 
 
+def _retrieved_context(user_message: str) -> str:
+    """Return a formatted RAG context block, or empty string if disabled/empty."""
+    if _rag is None or not user_message.strip():
+        return ""
+    try:
+        hits = _rag.retrieve(user_message, k=RAG_TOP_K)
+        return _rag.format_for_prompt(hits)
+    except Exception as e:
+        # Never fail the chat call because of RAG
+        print(f"[ollama_client] RAG retrieve failed: {e}")
+        return ""
+
+
 def _build_messages(
     user_type: str,
     user_message: str,
     history: List[Dict[str, Any]],
 ) -> List[Dict[str, str]]:
+    # Layer 1 (tone prompt) + Layer 2 (RAG context, if enabled).
+    system_content = SYSTEM_PROMPT
+    rag_block = _retrieved_context(user_message)
+    if rag_block:
+        system_content = f"{SYSTEM_PROMPT}\n\n{rag_block}"
+
     messages: List[Dict[str, str]] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_content},
     ]
 
     recent = history[-_MAX_HISTORY_MESSAGES:] if len(history) > _MAX_HISTORY_MESSAGES else history

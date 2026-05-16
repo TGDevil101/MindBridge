@@ -89,6 +89,9 @@ backend/*.db
 backend/*.sqlite
 backend/*.sqlite3
 
+# RAG index — binary vector DB, rebuild via `python build_index.py`
+backend/rag_index/
+
 # IDE
 .vscode/
 .idea/
