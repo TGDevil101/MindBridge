@@ -114,6 +114,101 @@ EXPLICIT_CRISIS_PATTERNS: list[str] = [
     r"\bwant\s+(it|everything)\s+to\s+end\b",
     r"\bwant\s+it\s+(all\s+)?to\s+(end|stop|be\s+over)\b",   # both word orders
     r"\bwant\s+it\s+to\s+(all\s+)?(end|stop|be\s+over)\b",
+
+    # =================================================================
+    # RED-TEAM v1 ADDITIONS (from 197-prompt adversarial evaluation)
+    # =================================================================
+
+    # --- Wishing-dead variants the v1 set missed ---
+    r"\bwant\s+to\s+be\s+dead\b",
+    r"\bjust\s+want\s+to\s+be\s+dead\b",
+    r"\bno\s+reason\s+(for\s+me\s+)?to\s+(live|be\s+alive)\b",
+    r"\bwish\s+i\s+weren'?t\s+here\b",
+    r"\bwish\s+i\s+wouldn'?t\s+exist\b",
+    r"\bwouldn'?t\s+exist\s+anymore\b",
+    r"\bstop\s+existing\b",
+    r"\bnot\s+be\s+here\s+(anymore|tomorrow)\b",
+    r"\bdon'?t\s+want\s+to\s+be\s+(here|alive)\s+anymore\b",
+    r"\bdisappear\s+(permanently|forever)\b",
+    r"\bwant\s+to\s+disappear\b",
+
+    # --- Sleep / death euphemism ---
+    r"\bfall\s+asleep\s+and\s+not\s+wake\s+up\b",
+    r"\bsleep\s+and\s+(never|not)\s+wake\s+up\b",
+    r"\bnever\s+wake\s+up\b",
+
+    # --- "Done with life" / "last day" framing ---
+    r"\bdone\s+with\s+life\b",
+    r"\bmy\s+last\s+day\b",
+    r"\b(this|today)\s+is\s+my\s+last\b",
+    r"\bplan\s+for\s+tonight\b",     # "I have a plan for tonight" — context-fragile but common
+    r"\bwon'?t\s+be\s+(a\s+)?problem\s+(much\s+)?longer\b",
+    r"\bpermanent\s+solution(s)?\b",
+    r"\bpain\s+to\s+end\s+(forever)?\b",
+    r"\bwant\s+the\s+pain\s+to\s+(end|stop)\b",
+
+    # --- Methods: pills, lethal-dose, weapons ---
+    r"\bcollecting\s+(pills|medication|drugs|tablets)\b",
+    r"\bsaving\s+up\s+(pills|medication)\b",
+    r"\blethal\s+(dose|amount|quantity)\b",
+    r"\bhow\s+(many|much)\s+(pills|tablets|medication)\s+(would|to)\s+(kill|be\s+lethal)\b",
+    r"\bgoogl(e|ing)\s+(lethal|painless|ways\s+to\s+die)\b",
+    r"\bresearching\s+(painless|lethal|ways\s+to\s+die)\b",
+    r"\b(ways|methods)\s+to\s+die\b",
+    r"\bpainless\s+(way|death|exit)\b",
+    r"\bbought\s+a\s+(rope|gun|knife)\b",
+    r"\bgot\s+a\s+(rope|gun|knife)\s+(for|to)\b",
+    r"\bgun\s+in\s+the\s+house\b",
+    r"\bdad'?s\s+gun\b",
+
+    # --- Methods: jumping with looser noun coverage ---
+    r"\bjump(ing)?\s+(off|from)\s+(the|a|my|our|some|that)?\s*(building|bridge|roof|balcony|window|train|cliff|terrace)\b",
+    r"\bimagin(e|ing)\s+jump(ing)?\b",
+    r"\bimagin(e|ing)\s+(hanging|drowning)\b",
+
+    # --- Self-harm extensions ---
+    r"\bcutting\s+(again|more|deeper)\b",
+    r"\bcuts\s+(are\s+)?(getting\s+)?deeper\b",
+    r"\bevery\s+time\s+i\s+cut\b",
+    r"\bhitting\s+(walls|myself)\b",
+
+    # --- Slang / Gen-Z euphemisms missed v1 ---
+    r"\bdelete\s+myself\b",
+    r"\bdeleting\s+my\s+(existence|life)\b",
+    r"\bseppuku\b",
+    r"\byeet(ing)?\s+myself\b",
+    r"\bend\s+it\s+all\b",
+
+    # --- Goodbye signals (extensions) ---
+    r"\bfinal\s+goodbye\b",
+    r"\bsay(ing)?\s+(my\s+)?final\s+goodbye\b",
+    r"\b(writing|wrote)\s+letters?\s+to\s+(my\s+)?(family|mom|dad|parents)\b",
+    r"\bleft\s+a\s+note\s+(on|by)\b",
+    r"\b(my\s+)?passwords?\s+(are\s+)?written\s+down\b",
+    r"\bwant\s+(my\s+\w+\s+)?to\s+have\s+my\s+(jewellery|jewelry|things|stuff)\b",
+
+    # --- Disguised / fictional framing (still treat as Tier 1 — safety > literalism) ---
+    r"\b(end|ending)\s+(their|his|her)\s+(own\s+)?life\b",
+    r"\bwant(s|ed)?\s+to\s+(die|kill\s+(themselves|himself|herself))\b",   # also catches "wanted to die"
+    r"\bhow\s+(do|would|can|might)\s+(people|someone|one)\s+(end|kill)\s+(their|his|her|themselves)\b",
+    r"\b(asking|asks)\s+for\s+a\s+friend\b",
+    r"\bhypothetically\s+(if|how|what)\b.{0,40}\b(die|end\s+(it|life)|disappear|overdose)\b",
+    r"\b(novel|story|character|fiction|book)\b.{0,40}\b(suicide|want(s|ed)?\s+to\s+die|end\s+(their|his|her)\s+life)\b",
+    r"\brole\s*play\s+as\s+someone\s+who\s+(want(s|ed)?\s+to\s+die|is\s+suicidal)\b",
+    r"\bgoodbye\s+text\b",            # "my classmate sent me a goodbye text"
+
+    # --- Red-team v2 residual fixes ---
+    r"\bwhat\s+it\s+would\s+(be\s+like\s+)?to\s+not\s+(be\s+here|exist)\b",
+    r"\bwhat\s+(if|would\s+it\s+be\s+like)\s+i\b.{0,20}\bnot\s+(be|exist)\b",
+    r"\bwant\s+everything\s+to\s+(stop|end|be\s+over|be\s+done|just\s+stop)\b",
+    r"\bwant\s+(it|this|everything)\s+to\s+just\s+(stop|end)\b",
+    r"\b(train|metro|railway)\s+(station|tracks?)\b.{0,30}\b(peaceful|appealing|good|nice)\b",
+    r"\b(bridge|cliff|tower)\b.{0,30}\b(peaceful|appealing|good|nice|calling)\b",
+
+    # --- Parent reporting child crisis (Tier 1: situation IS a crisis) ---
+    r"\bmy\s+(son|daughter|child|kid|teen(ager)?)\s+(said\s+)?(he|she|they)?\s*(wants?\s+to\s+die|is\s+suicidal|tried\s+to|mentioned\s+suicide)\b",
+    r"\bmy\s+(son|daughter|child|kid)\s+has\s+been\s+cutting\b",
+    r"\bmy\s+(son|daughter|child|kid).{0,60}\b(goodbye|suicide\s+note|self[\s-]?harm)\b",
 ]
 
 
