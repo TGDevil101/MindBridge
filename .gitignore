@@ -67,3 +67,35 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+
+# SQLite (replaced by MongoDB Atlas)
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
