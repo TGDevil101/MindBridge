@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from uuid import uuid4
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+# Load .env (MONGODB_URI, MODEL_PROVIDER, OLLAMA_HOST, JWT_SECRET, etc.)
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 from auth import create_access_token, decode_access_token, hash_password, verify_password
 from crisis import CRISIS_RESPONSE, detect_explicit_crisis, detect_implicit_distress
