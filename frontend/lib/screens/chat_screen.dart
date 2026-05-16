@@ -89,21 +89,48 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       _messages.add({'role': 'user', 'content': text});
+      // Add an empty assistant bubble we'll grow as deltas arrive.
+      _messages.add({'role': 'assistant', 'content': ''});
       _controller.clear();
       _isLoading = true;
     });
 
+    final assistantIdx = _messages.length - 1;
+    final buf = StringBuffer();
+    var gotAnything = false;
+
     try {
-      final result = await _api.sendChat(
+      await for (final event in _api.streamChat(
         message: text,
         userType: widget.userType.toLowerCase(),
         sessionId: _sessionId,
-      );
-      setState(() {
-        _sessionId = result['session_id'] as String? ?? _sessionId;
-        _messages.add({'role': 'assistant', 'content': result['response'] as String? ?? ''});
-        _showCrisisCard = (result['show_helpline_card'] as bool?) ?? false;
-      });
+      )) {
+        final type = event['event'] as String? ?? '';
+        if (type == 'start') {
+          final sid = event['session_id'] as String?;
+          if (sid != null) _sessionId = sid;
+        } else if (type == 'delta' || type == 'crisis') {
+          buf.write(event['content'] as String? ?? '');
+          if (type == 'crisis') {
+            _showCrisisCard = true;
+          }
+          gotAnything = true;
+          if (mounted) {
+            setState(() {
+              _messages[assistantIdx] = {'role': 'assistant', 'content': buf.toString()};
+            });
+          }
+        } else if (type == 'end') {
+          final sid = event['session_id'] as String?;
+          if (sid != null) _sessionId = sid;
+          final showCard = (event['show_helpline_card'] as bool?) ?? false;
+          if (showCard && mounted) {
+            setState(() => _showCrisisCard = true);
+          }
+        } else if (type == 'error') {
+          throw Exception(event['detail'] as String? ?? 'Stream error');
+        }
+      }
     } on UnauthorizedException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,9 +139,14 @@ class _ChatScreenState extends State<ChatScreen> {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
       }
     } catch (e) {
-      setState(() {
-        _messages.add({'role': 'assistant', 'content': 'Something went wrong. Please try again.'});
-      });
+      if (!gotAnything && mounted) {
+        setState(() {
+          _messages[assistantIdx] = {
+            'role': 'assistant',
+            'content': 'Something went wrong. Please try again.',
+          };
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

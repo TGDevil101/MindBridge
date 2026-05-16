@@ -13,7 +13,7 @@ class UnauthorizedException implements Exception {
 class ApiService {
   static final ApiService _instance = ApiService._internal();
 
-  factory ApiService({String baseUrl = 'https://exempt-storage-seal-diamond.trycloudflare.com'}) {
+  factory ApiService({String baseUrl = 'https://memorabilia-jet-retail-show.trycloudflare.com'}) {
     _instance.baseUrl = baseUrl;
     return _instance;
   }
@@ -122,6 +122,67 @@ class ApiService {
       throw Exception('Chat request failed: ${response.body}');
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Stream chat tokens as they're generated. Yields one event map per
+  /// NDJSON line from the backend. Event shapes:
+  ///   {'event':'start', 'session_id':'...'}
+  ///   {'event':'crisis', 'content':'...', 'show_helpline_card':true}
+  ///   {'event':'delta', 'content':'...'}
+  ///   {'event':'end', 'session_id':'...', 'crisis':bool, 'show_helpline_card':bool}
+  ///   {'event':'error', 'detail':'...'}
+  Stream<Map<String, dynamic>> streamChat({
+    required String message,
+    required String userType,
+    required String sessionId,
+  }) async* {
+    final request = http.Request('POST', Uri.parse('$baseUrl/chat/stream'));
+    request.headers.addAll(_getHeaders());
+    request.body = jsonEncode({
+      'message': message,
+      'user_type': userType,
+      'session_id': sessionId,
+    });
+
+    final client = http.Client();
+    try {
+      final streamed = await client.send(request);
+
+      if (streamed.statusCode == 401) {
+        await logout();
+        throw UnauthorizedException();
+      }
+      if (streamed.statusCode != 200) {
+        final body = await streamed.stream.bytesToString();
+        throw Exception('Stream request failed (${streamed.statusCode}): $body');
+      }
+
+      // Buffer partial lines across chunks.
+      String buffer = '';
+      await for (final chunk in streamed.stream.transform(utf8.decoder)) {
+        buffer += chunk;
+        while (true) {
+          final newlineIdx = buffer.indexOf('\n');
+          if (newlineIdx < 0) break;
+          final line = buffer.substring(0, newlineIdx).trim();
+          buffer = buffer.substring(newlineIdx + 1);
+          if (line.isEmpty) continue;
+          try {
+            yield jsonDecode(line) as Map<String, dynamic>;
+          } catch (_) {
+            // skip malformed line
+          }
+        }
+      }
+      // Flush any trailing line.
+      if (buffer.trim().isNotEmpty) {
+        try {
+          yield jsonDecode(buffer.trim()) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+    } finally {
+      client.close();
+    }
   }
 
   Future<Map<String, dynamic>> assess({

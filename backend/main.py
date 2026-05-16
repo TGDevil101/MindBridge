@@ -5,9 +5,12 @@ import re
 from pathlib import Path
 from uuid import uuid4
 
+import json as _json
+
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 # Load .env (MONGODB_URI, MODEL_PROVIDER, OLLAMA_HOST, JWT_SECRET, etc.)
@@ -32,9 +35,10 @@ _PROVIDER = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
 if _PROVIDER == "groq":
     from groq_client import get_chat_response
     _OllamaUnavailable: tuple = ()  # type: ignore[assignment]
+    stream_chat_response = None  # streaming only available on Ollama path
 else:
     from ollama_client import OllamaUnavailable as _OllamaUnavailable
-    from ollama_client import get_chat_response
+    from ollama_client import get_chat_response, stream_chat_response
 
 app = FastAPI(title="MindBridge Backend")
 
@@ -179,6 +183,90 @@ async def chat(payload: ChatRequest, authorization: str = Header(None)) -> dict:
         "crisis": implicit_distress,
         "show_helpline_card": implicit_distress,
     }
+
+
+@app.post("/chat/stream")
+async def chat_stream(payload: ChatRequest, authorization: str = Header(None)):
+    """Stream model tokens as NDJSON.
+
+    Wire protocol — each line is a JSON object:
+      {"event":"start","session_id":"..."}
+      {"event":"crisis","content":"...","show_helpline_card":true}   (only if hardcoded crisis)
+      {"event":"delta","content":"some"}                              (model tokens)
+      {"event":"delta","content":" tokens"}
+      ...
+      {"event":"end","session_id":"...","crisis":bool,"show_helpline_card":bool}
+
+    The client reads line by line and appends `event=delta` content to the
+    growing assistant message.
+    """
+    if stream_chat_response is None:
+        raise HTTPException(status_code=501, detail="Streaming not supported with current MODEL_PROVIDER")
+
+    user = await get_current_user(authorization)
+    user_id = str(user.get("_id"))
+    username = user.get("username")
+    session_id = payload.session_id or str(uuid4())
+    text = payload.message.strip()
+
+    explicit_crisis = detect_explicit_crisis(text)
+    implicit_distress = detect_implicit_distress(text)
+
+    async def event_stream():
+        # Always emit start so client knows session_id
+        yield _json.dumps({"event": "start", "session_id": session_id}) + "\n"
+
+        # Explicit crisis bypasses the model entirely — instant hardcoded response.
+        if explicit_crisis:
+            yield _json.dumps({
+                "event": "crisis",
+                "content": CRISIS_RESPONSE,
+                "show_helpline_card": True,
+            }) + "\n"
+            await append_chat_message(session_id, user_id, username, text, CRISIS_RESPONSE)
+            yield _json.dumps({
+                "event": "end",
+                "session_id": session_id,
+                "crisis": True,
+                "show_helpline_card": True,
+            }) + "\n"
+            return
+
+        # Implicit distress: prepend hardcoded crisis text before streaming model output
+        if implicit_distress:
+            yield _json.dumps({"event": "delta", "content": CRISIS_RESPONSE + "\n\n"}) + "\n"
+            full_response_parts: list[str] = [CRISIS_RESPONSE + "\n\n"]
+        else:
+            full_response_parts = []
+
+        history = await get_session_history(session_id, user_id)
+        try:
+            async for delta in stream_chat_response(payload.user_type, text, history=history):
+                full_response_parts.append(delta)
+                yield _json.dumps({"event": "delta", "content": delta}) + "\n"
+        except _OllamaUnavailable as exc:
+            yield _json.dumps({"event": "error", "detail": str(exc)}) + "\n"
+            return
+
+        full_response = "".join(full_response_parts).strip()
+        if full_response:
+            await append_chat_message(session_id, user_id, username, text, full_response)
+
+        yield _json.dumps({
+            "event": "end",
+            "session_id": session_id,
+            "crisis": implicit_distress,
+            "show_helpline_card": implicit_distress,
+        }) + "\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx/proxy buffering
+        },
+    )
 
 
 @app.post("/assess")
