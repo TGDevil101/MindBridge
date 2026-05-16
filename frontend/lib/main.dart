@@ -92,6 +92,7 @@ class _MindBridgeAppState extends State<MindBridgeApp> {
       routes: {
         '/login': (_) => const LoginScreen(),
         '/intake': (context) {
+          if (_apiService.token == null) return const LoginScreen();
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return IntakeScreen(
             username: args?['username'] as String?,
@@ -99,12 +100,26 @@ class _MindBridgeAppState extends State<MindBridgeApp> {
           );
         },
         HelplinesScreen.routeName: (_) => const HelplinesScreen(),
-        AssessmentScreen.routeName: (_) => const AssessmentScreen(),
-        ChatHistoryScreen.routeName: (_) => const ChatHistoryScreen(),
+        AssessmentScreen.routeName: (context) =>
+            _apiService.token == null ? const LoginScreen() : const AssessmentScreen(),
+        ChatHistoryScreen.routeName: (context) =>
+            _apiService.token == null ? const LoginScreen() : const ChatHistoryScreen(),
       },
       onGenerateRoute: (settings) {
+        // Auth guard — protected routes redirect to login when no token.
+        const protectedRoutes = {
+          ChatScreen.routeName,
+          AssessmentScreen.routeName,
+          ChatHistoryScreen.routeName,
+          ResultsScreen.routeName,
+          '/intake',
+        };
+        if (protectedRoutes.contains(settings.name) && _apiService.token == null) {
+          return MaterialPageRoute(builder: (_) => const LoginScreen());
+        }
+
         if (settings.name == ChatScreen.routeName) {
-          final args = settings.arguments as Map<String, dynamic>;
+          final args = settings.arguments as Map<String, dynamic>? ?? {};
           return MaterialPageRoute(
             builder: (_) => ChatScreen(
               userType: args['userType'] as String? ?? 'Student',
@@ -114,7 +129,7 @@ class _MindBridgeAppState extends State<MindBridgeApp> {
           );
         }
         if (settings.name == ResultsScreen.routeName) {
-          final args = settings.arguments as Map<String, dynamic>;
+          final args = settings.arguments as Map<String, dynamic>? ?? {};
           return MaterialPageRoute(builder: (_) => ResultsScreen(result: args));
         }
         return null;

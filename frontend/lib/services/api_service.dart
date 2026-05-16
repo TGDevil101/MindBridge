@@ -3,6 +3,13 @@ import 'dart:html' as html;
 
 import 'package:http/http.dart' as http;
 
+class UnauthorizedException implements Exception {
+  final String message;
+  UnauthorizedException([this.message = 'Session expired. Please log in again.']);
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   static final ApiService _instance = ApiService._internal();
 
@@ -107,6 +114,10 @@ class ApiService {
       }),
     );
 
+    if (response.statusCode == 401) {
+      await logout();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200) {
       throw Exception('Chat request failed: ${response.body}');
     }
@@ -126,6 +137,10 @@ class ApiService {
       }),
     );
 
+    if (response.statusCode == 401) {
+      await logout();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200) {
       throw Exception('Assessment failed: ${response.body}');
     }
@@ -137,6 +152,10 @@ class ApiService {
       Uri.parse('$baseUrl/history'),
       headers: _getHeaders(),
     );
+    if (response.statusCode == 401) {
+      await logout();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200) {
       throw Exception('History request failed: ${response.body}');
     }
@@ -148,6 +167,10 @@ class ApiService {
       Uri.parse('$baseUrl/history/$sessionId'),
       headers: _getHeaders(),
     );
+    if (response.statusCode == 401) {
+      await logout();
+      throw UnauthorizedException();
+    }
     if (response.statusCode != 200) {
       throw Exception('Delete failed: ${response.body}');
     }

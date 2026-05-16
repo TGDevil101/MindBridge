@@ -104,12 +104,19 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add({'role': 'assistant', 'content': result['response'] as String? ?? ''});
         _showCrisisCard = (result['show_helpline_card'] as bool?) ?? false;
       });
+    } on UnauthorizedException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Your session expired. Please log in again.')),
+        );
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+      }
     } catch (e) {
       setState(() {
-        _messages.add({'role': 'assistant', 'content': 'Something went wrong: $e'});
+        _messages.add({'role': 'assistant', 'content': 'Something went wrong. Please try again.'});
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
