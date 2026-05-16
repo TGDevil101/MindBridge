@@ -57,7 +57,7 @@ class _IntakeScreenState extends State<IntakeScreen> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: _userType,
+                  value: _userType,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   items: const [
                     DropdownMenuItem(value: 'Student', child: Text('Student')),
@@ -72,7 +72,7 @@ class _IntakeScreenState extends State<IntakeScreen> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: _ageRange,
+                  value: _ageRange,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   items: const [
                     DropdownMenuItem(value: 'Under 13', child: Text('Under 13')),
